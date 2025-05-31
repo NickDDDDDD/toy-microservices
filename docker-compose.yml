@@ -1,0 +1,27 @@
+version: "3.8"
+
+services:
+  rabbitmq:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rabbitmq
+    hostname: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+      - "61613:61613"
+      - "15674:15674"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - rabbitmq-net
+
+volumes:
+  rabbitmq-data:
+
+networks:
+  rabbitmq-net:
