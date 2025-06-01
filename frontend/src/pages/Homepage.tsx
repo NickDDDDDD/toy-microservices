@@ -1,4 +1,3 @@
-import { connectStomp, subscribeToTopic, sendMessage } from "../stompClient";
 import React, { useEffect, useState } from "react";
 
 const Homepage = () => {
@@ -6,16 +5,12 @@ const Homepage = () => {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<string[]>([]);
 
-  useEffect(() => {
-    connectStomp();
-  }, []);
-
   const handleSubscribe = () => {
     if (topic) {
-      subscribeToTopic(topic, (msg) => {
-        console.log("Received message:", msg.body);
-        setMessages((prevMessages) => [...prevMessages, msg.body]);
-      });
+      // subscribeToTopic(topic, (msg) => {
+      //   console.log("Received message:", msg.body);
+      //   setMessages((prevMessages) => [...prevMessages, msg.body]);
+      // });
     } else {
       console.warn("⚠️ Topic cannot be empty");
     }
@@ -23,9 +18,7 @@ const Homepage = () => {
 
   const handleSendMessage = () => {
     if (topic && message) {
-      sendMessage(topic, message);
-      setMessages((prevMessages) => [...prevMessages, message]);
-      console.log("Message sent:", message);
+      // sendMessage(topic, message);
     } else {
       console.warn("⚠️ Topic and message cannot be empty");
     }
@@ -75,7 +68,12 @@ const Homepage = () => {
       </div>
       <div>
         <h2>messages</h2>
-        <p>{messages}</p>
+
+        {messages.map((msg, index) => (
+          <p key={index} className="mb-2 rounded bg-neutral-800 p-2">
+            {msg}
+          </p>
+        ))}
       </div>
     </div>
   );

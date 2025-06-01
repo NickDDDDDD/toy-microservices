@@ -1,9 +1,22 @@
 version: "3.8"
 
 services:
+  api-gateway:
+    build:
+      context: ../services/api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      - chat-service
+    networks:
+      - rabbitmq-net
   rabbitmq:
     build:
-      context: .
+      context: ../services/mq-service
       dockerfile: Dockerfile
     container_name: rabbitmq
     hostname: rabbitmq
@@ -15,11 +28,22 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     networks:
       - rabbitmq-net
 
+  chat-service:
+    build:
+      context: ../services/chat-service
+      dockerfile: Dockerfile
+    container_name: chat-service
+
+    depends_on:
+      - rabbitmq
+    networks:
+      - rabbitmq-net
 volumes:
   rabbitmq-data:
 
