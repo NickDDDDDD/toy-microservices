@@ -1,5 +1,6 @@
 import amqp from "amqplib";
 import connectRabbitMQ from "../mq/connection";
+import { broadcastMessage } from "../ws/websocketServer";
 
 (async () => {
   const connection: amqp.ChannelModel = await connectRabbitMQ();
@@ -13,6 +14,8 @@ import connectRabbitMQ from "../mq/connection";
     if (msg !== null) {
       const content = msg.content.toString();
       console.log(`📰 Received:`, content);
+      broadcastMessage(content);
+      console.log(`✅ Broadcasted to WebSocket clients`);
       channel.ack(msg);
     }
   });

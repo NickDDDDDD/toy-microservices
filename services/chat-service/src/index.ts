@@ -1,60 +1,32 @@
 import express from "express";
-import chatRoutes from "./routes/chat";
 import http from "http";
-import { WebSocketServer } from "ws";
-import { initMQProducer, sendToQueue } from "./mq/producer";
+import dotenv from "dotenv";
+import { initMQProducer } from "./mq/producer";
+import { startWebSocketServer } from "./ws/websocketServer";
+import routes from "./routes";
 import "./mq/consumer";
+
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
-app.use("/", chatRoutes);
 
-app.get("/health", (req, res) => {
-  res.json({
-    status: "OK",
-    service: "chat-service",
-    timestamp: new Date().toISOString(),
-  });
-});
+app.use("/", routes);
 
 (async () => {
   try {
     await initMQProducer();
 
     const server = http.createServer(app);
-
-    const wss = new WebSocketServer({ server, path: "/ws/chat" });
-
-    wss.on("connection", (socket, req) => {
-      console.log("🟢 New WebSocket connection from", req.socket.remoteAddress);
-
-      socket.send("👋 Welcome to chat-service!");
-
-      socket.on("message", async (msg) => {
-        try {
-          await sendToQueue(msg.toString());
-          socket.send("✅ sent to MQ");
-        } catch (err) {
-          socket.send("❌ failed to send to MQ");
-        }
-      });
-
-      socket.on("close", () => {
-        console.log("🔌 WebSocket disconnected");
-      });
-    });
+    startWebSocketServer(server);
 
     server.listen(PORT, () => {
       console.log(`🚀 Chat Service running on port ${PORT}`);
-      console.log(`📋 Routes:`);
-      console.log(`   - GET  /health`);
-      console.log(`   - WS   /ws/chat`);
     });
-  } catch (error) {
-    console.error("❌ Failed to initialize MQ producer:", error);
+  } catch (err) {
+    console.error("❌ Startup error:", err);
     process.exit(1);
   }
-  console.log("✅ MQ producer initialized");
 })();
