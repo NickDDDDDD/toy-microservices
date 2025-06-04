@@ -28,20 +28,36 @@ export const WebSocketProvider = ({
   children: React.ReactNode;
 }) => {
   const socketRef = useRef<WebSocket | null>(null);
+  const pingIntervalRef = useRef<number | null>(null);
+
   const [lastMessage, setLastMessage] = useState<Message | null>(null);
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
     const socket = new WebSocket(WS_URL);
+    socketRef.current = socket;
 
     socket.onopen = () => {
       console.log("✅ WebSocket connected");
       setIsConnected(true);
+
+      // heartbeat mechanism
+      pingIntervalRef.current = setInterval(() => {
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ type: "ping" }));
+          console.log("📤 Sent: ping");
+        }
+      }, 10000);
     };
 
     socket.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data);
+
+        if (message.type === "pong") {
+          console.log("📥 Received: pong");
+          return;
+        }
         setLastMessage(message);
         console.log("📩 Received:", message);
       } catch (e) {
@@ -52,16 +68,25 @@ export const WebSocketProvider = ({
     socket.onclose = () => {
       console.warn("❌ WebSocket closed");
       setIsConnected(false);
-      // 可选: 自动重连逻辑
+
+      // clear ping interval
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+        pingIntervalRef.current = null;
+      }
+
+      // Attempt to reconnect
     };
 
     socket.onerror = (error) => {
       console.error("WebSocket error:", error);
     };
 
-    socketRef.current = socket;
-
     return () => {
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+        pingIntervalRef.current = null;
+      }
       socket.close();
     };
   }, []);
