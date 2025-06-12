@@ -3,11 +3,14 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.tsx";
 import { WebSocketProvider } from "./context/WebSocketContext";
+import { ContainerContextProvider } from "./context/ContainerContext.tsx";
 
 createRoot(document.getElementById("root")!).render(
   // <StrictMode>
   <WebSocketProvider>
-    <App />
+    <ContainerContextProvider>
+      <App />
+    </ContainerContextProvider>
   </WebSocketProvider>,
   // </StrictMode>,
 );

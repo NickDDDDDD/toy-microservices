@@ -1,9 +1,10 @@
 import Homepage from "./pages/Homepage";
-
+import Assitant from "./components/Assitant";
 function App() {
   return (
-    <div className="w-dvw h-dvh">
+    <div className="h-dvh w-dvw">
       <Homepage />
+      <Assitant />
     </div>
   );
 }
