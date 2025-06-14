@@ -12,6 +12,7 @@ import type {
   ContainerPublicAPI,
   ContainerInternalAPI,
   ContainerSnapshot,
+  ElementSummary,
 } from "../types/container";
 
 const InternalContainerContext = createContext<ContainerInternalAPI | null>(
@@ -38,29 +39,44 @@ export const AIContainer = ({
 
   const getSnapshot = useCallback((): ContainerSnapshot => {
     const wrapper = wrapperRef.current;
+
     if (!wrapper) {
       return {
         id,
-        metadata: {
-          tagCount: {},
-          textContent: "",
-          childCount: 0,
-        },
+        innerHTML: "<!-- container not mounted -->",
+        containerRect: new DOMRect(0, 0, 0, 0),
+        childrenSummary: [],
       };
     }
-    const tagCount: Record<string, number> = {};
-    wrapper.querySelectorAll("*").forEach((el) => {
-      const tag = el.tagName.toLowerCase();
-      tagCount[tag] = (tagCount[tag] || 0) + 1;
+
+    const innerHTML = wrapper.innerHTML;
+    const containerRect = wrapper.getBoundingClientRect();
+
+    const elements = Array.from(wrapper.querySelectorAll("*"));
+
+    const childrenSummary: ElementSummary[] = elements.map((el) => {
+      const rect = el.getBoundingClientRect();
+      const style = window.getComputedStyle(el);
+
+      return {
+        tag: el.tagName.toLowerCase(),
+        classList: Array.from(el.classList),
+        boundingRect: rect,
+        computedStyle: {
+          color: style.color,
+          backgroundColor: style.backgroundColor,
+          fontSize: style.fontSize,
+          fontWeight: style.fontWeight,
+        },
+        textContent: el.textContent?.trim() || undefined,
+      };
     });
 
     return {
       id,
-      metadata: {
-        tagCount,
-        textContent: wrapper.textContent || "",
-        childCount: wrapper.children.length,
-      },
+      innerHTML,
+      containerRect,
+      childrenSummary,
     };
   }, [id]);
 

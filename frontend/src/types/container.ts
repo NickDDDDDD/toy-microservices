@@ -20,11 +20,22 @@ export type ContainerInfo<T = unknown> = {
   data?: T;
 };
 
+export type ElementSummary = {
+  tag: string;
+  classList: string[];
+  boundingRect: DOMRect;
+  computedStyle: {
+    color: string;
+    backgroundColor: string;
+    fontSize: string;
+    fontWeight: string;
+  };
+  textContent?: string;
+};
+
 export type ContainerSnapshot = {
   id: string;
-  metadata: {
-    tagCount: Record<string, number>;
-    textContent: string;
-    childCount: number;
-  };
+  innerHTML: string;
+  containerRect: DOMRect;
+  childrenSummary: ElementSummary[];
 };

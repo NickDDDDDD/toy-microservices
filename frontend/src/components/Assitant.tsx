@@ -1,7 +1,7 @@
 import { useMousePosition } from "../hooks/useMousePosition";
 import { useContainerContext } from "../context/ContainerContext";
 import { useEffect, useState } from "react";
-
+import type { ContainerSnapshot } from "../types/container";
 type Edge = "left" | "right" | "top" | "bottom";
 
 type ClosestResult = {
@@ -112,6 +112,8 @@ const Assistant = () => {
   const { getContainerIds, getContainerById } = useContainerContext();
   const [attachedId, setAttachedId] = useState<string | null>(null);
   const [closestInfo, setClosestInfo] = useState<ClosestResult | null>(null);
+  const [closestSnapshot, setClosestSnapshot] =
+    useState<ContainerSnapshot | null>(null);
 
   // attach to closest container if within threshold
   useEffect(() => {
@@ -160,6 +162,11 @@ const Assistant = () => {
         closestId = id;
         closest = { ...info, containerId: id };
       }
+    }
+    if (closestId) {
+      const cloestContainer = getContainerById(closestId);
+      const snapshot = cloestContainer?.apiRef.current?.getSnapshot?.();
+      console.log("📸 Closest container snapshot:", snapshot);
     }
 
     if (!closestId) {
