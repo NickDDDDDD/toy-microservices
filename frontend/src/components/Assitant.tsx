@@ -2,6 +2,9 @@ import { useMousePosition } from "../hooks/useMousePosition";
 import { useContainerContext } from "../context/ContainerContext";
 import { useEffect, useState } from "react";
 import type { ContainerSnapshot } from "../types/container";
+import { twMerge } from "tailwind-merge";
+import { motion } from "motion/react";
+
 type Edge = "left" | "right" | "top" | "bottom";
 
 type ClosestResult = {
@@ -105,15 +108,20 @@ function clamp(val: number, min: number, max: number): number {
   return Math.max(min, Math.min(val, max));
 }
 
-const ATTACH_DISTANCE_THRESHOLD = 50;
+const ATTACH_DISTANCE_THRESHOLD = 30;
 
 const Assistant = () => {
   const { x, y } = useMousePosition();
-  const { getContainerIds, getContainerById } = useContainerContext();
-  const [attachedId, setAttachedId] = useState<string | null>(null);
+  const {
+    getContainerIds,
+    getContainerById,
+    getAllSnapshots,
+    attachedId,
+    setAttachedId,
+  } = useContainerContext();
   const [closestInfo, setClosestInfo] = useState<ClosestResult | null>(null);
-  const [closestSnapshot, setClosestSnapshot] =
-    useState<ContainerSnapshot | null>(null);
+  const [allSnapshots, setAllSnapshots] = useState<ContainerSnapshot[]>([]);
+  const [isHoveringAssistant, setIsHoveringAssistant] = useState(false);
 
   // attach to closest container if within threshold
   useEffect(() => {
@@ -124,10 +132,25 @@ const Assistant = () => {
       if (attachedId !== closestInfo.containerId) {
         setAttachedId(closestInfo.containerId);
       }
-    } else if (attachedId) {
+    } else if (attachedId && !isHoveringAssistant) {
       setAttachedId(null); // 👈 de-attach
     }
-  }, [closestInfo, attachedId]);
+  }, [closestInfo, attachedId, setAttachedId, isHoveringAssistant]);
+
+  // update all snapshots on mouse move
+  useEffect(() => {
+    const snapshots = getAllSnapshots();
+
+    setAllSnapshots((prev) => {
+      const unchanged =
+        prev.length === snapshots.length &&
+        prev.every(
+          (s, i) =>
+            s.id === snapshots[i].id && s.innerHTML === snapshots[i].innerHTML,
+        );
+      return unchanged ? prev : snapshots;
+    });
+  }, [x, y, getAllSnapshots]);
 
   // compute closest container on mouse move
   useEffect(() => {
@@ -143,7 +166,8 @@ const Assistant = () => {
           y >= rect.top &&
           y <= rect.bottom;
 
-        const stillValid = inside || distance < ATTACH_DISTANCE_THRESHOLD;
+        const stillValid =
+          inside || distance < ATTACH_DISTANCE_THRESHOLD || isHoveringAssistant;
         if (stillValid) return;
       }
     }
@@ -163,11 +187,6 @@ const Assistant = () => {
         closest = { ...info, containerId: id };
       }
     }
-    if (closestId) {
-      const cloestContainer = getContainerById(closestId);
-      const snapshot = cloestContainer?.apiRef.current?.getSnapshot?.();
-      console.log("📸 Closest container snapshot:", snapshot);
-    }
 
     if (!closestId) {
       closest = computeClosestInfoToScreenEdge(x, y);
@@ -176,52 +195,72 @@ const Assistant = () => {
     setClosestInfo(closest);
   }, [x, y, attachedId, getContainerIds, getContainerById]);
 
-  let style: React.CSSProperties;
+  const analyse = () => {
+    if (!attachedId && !closestInfo?.containerId) return;
 
-  if (attachedId && closestInfo) {
-    style = {
-      position: "fixed",
-      left: closestInfo.point.x,
-      top: closestInfo.point.y,
-      transform:
-        closestInfo.edge === "left"
-          ? "translateX(-100%) translateY(-50%)"
-          : closestInfo.edge === "right"
-            ? "translateX(0) translateY(-50%)"
-            : closestInfo.edge === "top"
-              ? "translateX(-50%) translateY(-100%) "
-              : "translateX(-50%) translateY(0)",
-    };
-  } else if (!attachedId && closestInfo) {
-    style = {
-      position: "fixed",
-      left: x,
-      top: y,
-      transform:
-        closestInfo.edge === "left"
-          ? "translateX(-150%) translateY(-50%)"
-          : closestInfo.edge === "right"
-            ? "translateX(50%) translateY(-50%)"
-            : closestInfo.edge === "top"
-              ? "translateY(-150%) translateX(-50%)"
-              : "translateY(50%) translateX(-50%)",
-    };
-  } else {
-    style = {
-      position: "fixed",
-      left: x,
-      top: y,
-      transform: "translate(50%, 50%)",
-    };
+    const containerId = closestInfo?.containerId || attachedId;
+    if (!containerId) return;
+
+    const snapshot = allSnapshots.find((s) => s.id === containerId);
+    if (!snapshot) return;
+
+    console.log("Analyzing snapshot:", snapshot);
+  };
+
+  function getTransform(edge: Edge, isAttached: boolean): string {
+    if (isAttached) {
+      return {
+        left: "translateX(-100%) translateY(-50%)",
+        right: "translateX(0) translateY(-50%)",
+        top: "translateX(-50%) translateY(-100%)",
+        bottom: "translateX(-50%) translateY(0)",
+      }[edge];
+    } else {
+      return {
+        left: "translateX(-150%) translateY(-50%)",
+        right: "translateX(50%) translateY(-50%)",
+        top: "translateY(-150%) translateX(-50%)",
+        bottom: "translateY(50%) translateX(-50%)",
+      }[edge];
+    }
   }
 
   return (
-    <div
-      className="pointer-events-none z-[9999] rounded-lg bg-neutral-800 px-3 py-2 text-sm text-white"
-      style={style}
+    <motion.button
+      animate={{
+        left: attachedId && closestInfo ? closestInfo.point.x : x,
+        top: attachedId && closestInfo ? closestInfo.point.y : y,
+        transform:
+          attachedId && closestInfo
+            ? getTransform(closestInfo.edge, true)
+            : closestInfo
+              ? getTransform(closestInfo.edge, false)
+              : "translate(50%, 50%)",
+      }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
+      className={twMerge(
+        attachedId
+          ? `pointer-events-auto cursor-pointer bg-purple-500 transition-[border-radius] duration-800 ${
+              closestInfo?.edge === "left"
+                ? "rounded-l-full"
+                : closestInfo?.edge === "right"
+                  ? "rounded-r-full"
+                  : closestInfo?.edge === "top"
+                    ? "rounded-t-full"
+                    : "rounded-b-full"
+            }`
+          : "pointer-events-none rounded-full bg-neutral-800 transition-[border-radius] duration-800",
+        "z-[9999] p-3 text-sm font-bold text-white",
+      )}
+      style={{ position: "fixed" }}
+      onClick={analyse}
+      onMouseEnter={() => setIsHoveringAssistant(true)}
+      onMouseLeave={() => {
+        setTimeout(() => setIsHoveringAssistant(false), 100);
+      }}
     >
       Assistant
-    </div>
+    </motion.button>
   );
 };
 

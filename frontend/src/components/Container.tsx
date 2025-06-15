@@ -1,29 +1,13 @@
 // components/AIContainer.tsx
-import {
-  useEffect,
-  useRef,
-  createContext,
-  useContext,
-  useCallback,
-} from "react";
+import { useEffect, useRef, useCallback } from "react";
 import type { ReactNode } from "react";
 import { useContainerContext } from "../context/ContainerContext";
 import type {
   ContainerPublicAPI,
-  ContainerInternalAPI,
   ContainerSnapshot,
   ElementSummary,
 } from "../types/container";
-
-const InternalContainerContext = createContext<ContainerInternalAPI | null>(
-  null,
-);
-
-export const useMyContainer = () => {
-  const ctx = useContext(InternalContainerContext);
-  if (!ctx) throw new Error("Must be used inside <AIContainer>");
-  return ctx;
-};
+import { twMerge } from "tailwind-merge";
 
 export const AIContainer = ({
   id,
@@ -35,7 +19,7 @@ export const AIContainer = ({
   const wrapperRef = useRef<HTMLDivElement | null>(null);
 
   const apiRef = useRef<ContainerPublicAPI | null>(null);
-  const { register, unregister, getOtherContainers } = useContainerContext();
+  const { register, unregister, attachedId } = useContainerContext();
 
   const getSnapshot = useCallback((): ContainerSnapshot => {
     const wrapper = wrapperRef.current;
@@ -89,19 +73,15 @@ export const AIContainer = ({
     return () => unregister(id);
   }, [id, register, unregister]);
 
-  const getOtherSnapshots = () =>
-    getOtherContainers(id).map((c) => ({
-      id: c.id,
-      snapshot: c.apiRef.current?.getSnapshot?.() ?? {},
-    }));
-
   return (
-    <InternalContainerContext.Provider
-      value={{ id, getSnapshot, getOtherSnapshots }}
+    <div
+      className={twMerge(
+        attachedId === id ? "ring-4 ring-purple-500/80" : "",
+        "relative h-fit w-fit overflow-hidden rounded-4xl transition-all duration-800",
+      )}
+      ref={wrapperRef}
     >
-      <div className="relative h-fit w-fit" ref={wrapperRef}>
-        {children}
-      </div>
-    </InternalContainerContext.Provider>
+      {children}
+    </div>
   );
 };

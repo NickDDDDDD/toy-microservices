@@ -3,13 +3,7 @@ import type { RefObject } from "react";
 
 export type ContainerPublicAPI = {
   id: string;
-  getSnapshot: () => Record<string, unknown>;
-};
-
-export type ContainerInternalAPI = {
-  id: string;
-  getSnapshot: () => Record<string, unknown>;
-  getOtherSnapshots: () => { id: string; snapshot: Record<string, unknown> }[];
+  getSnapshot: () => ContainerSnapshot;
 };
 
 export type ContainerInfo<T = unknown> = {

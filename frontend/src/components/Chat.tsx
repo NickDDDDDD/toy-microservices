@@ -20,7 +20,7 @@ const Chat = () => {
 
   return (
     <AIContainer id="chat">
-      <div className="relative m-auto flex aspect-[4/3] h-[50dvh] flex-col justify-center rounded-4xl bg-neutral-800 p-4 text-neutral-200">
+      <div className="relative m-auto flex aspect-[4/3] h-[50dvh] flex-col justify-center bg-neutral-800 p-4 text-neutral-200">
         <header className="flex w-full items-center justify-between rounded-full bg-neutral-700 px-4 py-2">
           <h2>WebSocket Chat</h2>
           <p>Status: {isConnected ? "🟢 Connected" : "🔴 Disconnected"}</p>
