@@ -2,15 +2,18 @@
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.tsx";
-import { WebSocketProvider } from "./context/WebSocketContext";
+import { ChatWebSocketProvider } from "./context/ChatWebSocketContext.tsx";
+import { AIWebSocketProvider } from "./context/AIWebsocketContext.tsx";
 import { ContainerContextProvider } from "./context/ContainerContext.tsx";
 
 createRoot(document.getElementById("root")!).render(
   // <StrictMode>
-  <WebSocketProvider>
-    <ContainerContextProvider>
-      <App />
-    </ContainerContextProvider>
-  </WebSocketProvider>,
+  <AIWebSocketProvider>
+    <ChatWebSocketProvider>
+      <ContainerContextProvider>
+        <App />
+      </ContainerContextProvider>
+    </ChatWebSocketProvider>
+  </AIWebSocketProvider>,
   // </StrictMode>,
 );

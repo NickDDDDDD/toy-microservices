@@ -1,6 +1,16 @@
 version: "3.8"
 
 services:
+  ai-service:
+    build:
+      context: ../services/ai-service
+      dockerfile: Dockerfile
+    container_name: ai-service
+    ports:
+      - "8000:8000"
+    networks:
+      - rabbitmq-net
+
   api-gateway:
     build:
       context: ../services/api-gateway
@@ -14,6 +24,7 @@ services:
       - chat-service
     networks:
       - rabbitmq-net
+
   rabbitmq:
     build:
       context: ../services/mq-service
@@ -44,6 +55,7 @@ services:
       - rabbitmq
     networks:
       - rabbitmq-net
+
 volumes:
   rabbitmq-data:
 

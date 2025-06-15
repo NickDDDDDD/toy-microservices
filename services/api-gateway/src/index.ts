@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import { createProxyMiddleware } from "http-proxy-middleware";
 import http from "http";
+import type { Socket } from "net";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -44,6 +45,24 @@ const chatWSProxy = createProxyMiddleware({
 
 app.use("/ws/chat", chatWSProxy);
 
+// AI service proxy
+const aiWSProxy = createProxyMiddleware({
+  target: "ws://ai-service:8000",
+  changeOrigin: true,
+  ws: true,
+  logger: console,
+  on: {
+    proxyReqWs: (proxyReq, req, socket, options, head) => {
+      console.log(`[AI WS Proxy] Upgrade → ${req.url}`);
+    },
+    error: (err, req, res) => {
+      console.error(`[AI WS Proxy Error] ${err.message}`);
+    },
+  },
+});
+
+app.use("/ws/ai", aiWSProxy);
+
 // 404
 app.use((req, res) => {
   res.status(404).json({
@@ -60,6 +79,17 @@ server.listen(PORT, () => {
   console.log(`   - GET  /health`);
   console.log(`   - WS   /ws/chat`);
 });
-server.on("upgrade", chatWSProxy.upgrade);
+server.on("upgrade", (req, socket: Socket, head) => {
+  const url = req.url || "";
+  console.log(`[WS UPGRADE] ${url}`);
 
+  if (url.startsWith("/ws/chat")) {
+    chatWSProxy.upgrade(req, socket, head);
+  } else if (url.startsWith("/ws/ai")) {
+    aiWSProxy.upgrade(req, socket, head);
+  } else {
+    console.warn(`[WS UPGRADE] No match for ${url} → closing`);
+    socket.destroy();
+  }
+});
 export default app;

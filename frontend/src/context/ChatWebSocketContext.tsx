@@ -18,11 +18,11 @@ type WebSocketContextType = {
   isConnected: boolean;
 };
 
-const WS_URL = import.meta.env.VITE_WS_URL;
+const WS_URL = import.meta.env.VITE_WS_URL_CHAT;
 
-const WebSocketContext = createContext<WebSocketContextType | null>(null);
+const ChatWebSocketContext = createContext<WebSocketContextType | null>(null);
 
-export const WebSocketProvider = ({
+export const ChatWebSocketProvider = ({
   children,
 }: {
   children: React.ReactNode;
@@ -38,7 +38,7 @@ export const WebSocketProvider = ({
     socketRef.current = socket;
 
     socket.onopen = () => {
-      console.log("✅ WebSocket connected");
+      console.log("✅ [CHAT]WebSocket connected");
       setIsConnected(true);
 
       // heartbeat mechanism
@@ -100,18 +100,18 @@ export const WebSocketProvider = ({
   };
 
   return (
-    <WebSocketContext.Provider
+    <ChatWebSocketContext.Provider
       value={{ sendMessage, lastMessage, isConnected }}
     >
       {children}
-    </WebSocketContext.Provider>
+    </ChatWebSocketContext.Provider>
   );
 };
 
-export const useWebSocket = (): WebSocketContextType => {
-  const context = useContext(WebSocketContext);
+export const useChatWebSocket = (): WebSocketContextType => {
+  const context = useContext(ChatWebSocketContext);
   if (!context) {
-    throw new Error("useWebSocket must be used within WebSocketProvider");
+    throw new Error("useWebSocket must be used within ChatWebSocketProvider");
   }
   return context;
 };

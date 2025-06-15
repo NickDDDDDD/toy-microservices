@@ -1,10 +1,10 @@
 // Chat.tsx
 import { useState } from "react";
-import { useWebSocket } from "../context/WebSocketContext";
+import { useChatWebSocket } from "../context/ChatWebSocketContext";
 import { AIContainer } from "./Container";
-
+import { twMerge } from "tailwind-merge";
 const Chat = () => {
-  const { sendMessage, lastMessage, isConnected } = useWebSocket();
+  const { sendMessage, lastMessage, isConnected } = useChatWebSocket();
   const [input, setInput] = useState("");
 
   const handleSend = () => {
@@ -23,7 +23,18 @@ const Chat = () => {
       <div className="relative m-auto flex aspect-[4/3] h-[50dvh] flex-col justify-center bg-neutral-800 p-4 text-neutral-200">
         <header className="flex w-full items-center justify-between rounded-full bg-neutral-700 px-4 py-2">
           <h2>WebSocket Chat</h2>
-          <p>Status: {isConnected ? "🟢 Connected" : "🔴 Disconnected"}</p>
+          <div className="relative flex items-center">
+            <span
+              className={twMerge(
+                "mr-2 h-3 w-3 rounded-full border-2 border-white",
+                isConnected ? "bg-green-500" : "bg-red-500",
+              )}
+              title={isConnected ? "Connected" : "Disconnected"}
+            />
+            <span className="text-sm">
+              {isConnected ? "Connected" : "Disconnected"}
+            </span>
+          </div>
         </header>
         <div className="flex w-full flex-1 flex-col justify-evenly gap-4">
           <p>Last message: {lastMessage?.content}</p>

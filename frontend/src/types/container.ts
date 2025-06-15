@@ -14,10 +14,17 @@ export type ContainerInfo<T = unknown> = {
   data?: T;
 };
 
+export type SerializableRect = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 export type ElementSummary = {
   tag: string;
   classList: string[];
-  boundingRect: DOMRect;
+  boundingRect: SerializableRect;
   computedStyle: {
     color: string;
     backgroundColor: string;
@@ -30,6 +37,6 @@ export type ElementSummary = {
 export type ContainerSnapshot = {
   id: string;
   innerHTML: string;
-  containerRect: DOMRect;
+  containerRect: SerializableRect;
   childrenSummary: ElementSummary[];
 };

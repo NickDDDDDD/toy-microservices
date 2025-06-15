@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { ContainerSnapshot } from "../types/container";
 import { twMerge } from "tailwind-merge";
 import { motion } from "motion/react";
-
+import { useAIWebSocket } from "../context/AIWebsocketContext";
 type Edge = "left" | "right" | "top" | "bottom";
 
 type ClosestResult = {
@@ -122,6 +122,7 @@ const Assistant = () => {
   const [closestInfo, setClosestInfo] = useState<ClosestResult | null>(null);
   const [allSnapshots, setAllSnapshots] = useState<ContainerSnapshot[]>([]);
   const [isHoveringAssistant, setIsHoveringAssistant] = useState(false);
+  const { sendMessage, isConnected } = useAIWebSocket();
 
   // attach to closest container if within threshold
   useEffect(() => {
@@ -193,7 +194,14 @@ const Assistant = () => {
     }
 
     setClosestInfo(closest);
-  }, [x, y, attachedId, getContainerIds, getContainerById]);
+  }, [
+    x,
+    y,
+    attachedId,
+    getContainerIds,
+    getContainerById,
+    isHoveringAssistant,
+  ]);
 
   const analyse = () => {
     if (!attachedId && !closestInfo?.containerId) return;
@@ -205,6 +213,11 @@ const Assistant = () => {
     if (!snapshot) return;
 
     console.log("Analyzing snapshot:", snapshot);
+
+    sendMessage({
+      type: "snapshot",
+      content: snapshot,
+    });
   };
 
   function getTransform(edge: Edge, isAttached: boolean): string {
@@ -260,6 +273,13 @@ const Assistant = () => {
       }}
     >
       Assistant
+      <span
+        className={twMerge(
+          "absolute top-0 right-0 h-2 w-2 rounded-full border-1 border-white",
+          isConnected ? "bg-green-500" : "bg-red-500",
+        )}
+        title={isConnected ? "Connected" : "Disconnected"}
+      />
     </motion.button>
   );
 };
