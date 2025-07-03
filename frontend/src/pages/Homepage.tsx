@@ -1,9 +1,13 @@
 import Chat from "../components/Chat";
+import Article from "../components/Article";
+import EmptyDemo from "../components/EmptyDemo";
 
 const Homepage = () => {
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center bg-neutral-200 p-4">
+    <div className="flex w-full flex-col items-center justify-center gap-4 bg-neutral-200 p-4">
       <Chat />
+      <Article />
+      <EmptyDemo />
     </div>
   );
 };

@@ -1,10 +1,12 @@
 import { useMousePosition } from "../hooks/useMousePosition";
 import { useContainerContext } from "../context/ContainerContext";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ContainerSnapshot } from "../types/container";
 import { twMerge } from "tailwind-merge";
 import { motion } from "motion/react";
 import { useAIWebSocket } from "../context/AIWebsocketContext";
+import { createPortal } from "react-dom";
+
 type Edge = "left" | "right" | "top" | "bottom";
 
 type ClosestResult = {
@@ -27,7 +29,6 @@ function computeClosestInfo(
   let edge: Edge;
 
   if ((isLeft || isRight) && (isAbove || isBelow)) {
-    // diagonal case
     const dx = isLeft ? rect.left - mouseX : mouseX - rect.right;
     const dy = isAbove ? rect.top - mouseY : mouseY - rect.bottom;
     edge = dx > dy ? (isLeft ? "left" : "right") : isAbove ? "top" : "bottom";
@@ -41,7 +42,6 @@ function computeClosestInfo(
     edge = "bottom";
   }
 
-  // 🎯 Step 2: 计算 attach 点 + 距离
   let point: { x: number; y: number };
   let distance: number;
 
@@ -118,30 +118,54 @@ const Assistant = () => {
     getAllSnapshots,
     attachedId,
     setAttachedId,
+    isHovered,
   } = useContainerContext();
   const [closestInfo, setClosestInfo] = useState<ClosestResult | null>(null);
   const [allSnapshots, setAllSnapshots] = useState<ContainerSnapshot[]>([]);
   const [isHoveringAssistant, setIsHoveringAssistant] = useState(false);
   const { sendMessage, isConnected } = useAIWebSocket();
 
-  // attach to closest container if within threshold
+  const analyse = useCallback(() => {
+    const containerId = closestInfo?.containerId || attachedId;
+    if (!containerId) return;
+
+    const snapshot = allSnapshots.find((s) => s.id === containerId);
+    if (!snapshot) return;
+
+    console.log("Analyzing snapshot:", snapshot);
+
+    sendMessage({
+      type: "snapshot",
+      content: snapshot,
+    });
+  }, [attachedId, closestInfo, allSnapshots, sendMessage]);
+
   useEffect(() => {
+    const shouldStayAttached =
+      isHoveringAssistant || (attachedId ? isHovered(attachedId) : false);
+
     if (
       closestInfo?.containerId &&
       closestInfo.distance < ATTACH_DISTANCE_THRESHOLD
     ) {
       if (attachedId !== closestInfo.containerId) {
         setAttachedId(closestInfo.containerId);
+        analyse();
       }
-    } else if (attachedId && !isHoveringAssistant) {
-      setAttachedId(null); // 👈 de-attach
+    } else if (attachedId && !shouldStayAttached) {
+      setAttachedId(null);
     }
-  }, [closestInfo, attachedId, setAttachedId, isHoveringAssistant]);
+  }, [
+    closestInfo,
+    attachedId,
+    setAttachedId,
+    isHoveringAssistant,
+    analyse,
+    isHovered,
+  ]);
 
-  // update all snapshots on mouse move
   useEffect(() => {
     const snapshots = getAllSnapshots();
-
     setAllSnapshots((prev) => {
       const unchanged =
         prev.length === snapshots.length &&
@@ -153,7 +177,6 @@ const Assistant = () => {
     });
   }, [x, y, getAllSnapshots]);
 
-  // compute closest container on mouse move
   useEffect(() => {
     if (attachedId) {
       const container = getContainerById(attachedId);
@@ -168,10 +191,14 @@ const Assistant = () => {
           y <= rect.bottom;
 
         const stillValid =
-          inside || distance < ATTACH_DISTANCE_THRESHOLD || isHoveringAssistant;
+          inside ||
+          distance < ATTACH_DISTANCE_THRESHOLD ||
+          isHoveringAssistant ||
+          isHovered(attachedId);
         if (stillValid) return;
       }
     }
+
     let closest: ClosestResult | null = null;
     let closestId: string | null = null;
     let closestDistance = Infinity;
@@ -201,48 +228,48 @@ const Assistant = () => {
     getContainerIds,
     getContainerById,
     isHoveringAssistant,
+    isHovered,
   ]);
 
-  const analyse = () => {
-    if (!attachedId && !closestInfo?.containerId) return;
+  const containerEl = attachedId
+    ? getContainerById(attachedId)?.domRef.current
+    : null;
 
-    const containerId = closestInfo?.containerId || attachedId;
-    if (!containerId) return;
-
-    const snapshot = allSnapshots.find((s) => s.id === containerId);
-    if (!snapshot) return;
-
-    console.log("Analyzing snapshot:", snapshot);
-
-    sendMessage({
-      type: "snapshot",
-      content: snapshot,
-    });
-  };
-
-  function getTransform(edge: Edge, isAttached: boolean): string {
-    if (isAttached) {
+  const relativePos = useMemo(() => {
+    if (attachedId && closestInfo && containerEl) {
+      const rect = containerEl.getBoundingClientRect();
       return {
-        left: "translateX(-100%) translateY(-50%)",
-        right: "translateX(0) translateY(-50%)",
-        top: "translateX(-50%) translateY(-100%)",
-        bottom: "translateX(-50%) translateY(0)",
-      }[edge];
-    } else {
-      return {
-        left: "translateX(-150%) translateY(-50%)",
-        right: "translateX(50%) translateY(-50%)",
-        top: "translateY(-150%) translateX(-50%)",
-        bottom: "translateY(50%) translateX(-50%)",
-      }[edge];
+        x: closestInfo.point.x - rect.left,
+        y: closestInfo.point.y - rect.top,
+      };
     }
+    return null;
+  }, [attachedId, closestInfo, containerEl]);
+
+  function getTransform(edge?: Edge, isAttached?: boolean): string {
+    if (!edge) return "translate(-50%, -50%)";
+
+    return isAttached
+      ? {
+          left: "translateX(-100%) translateY(-50%)",
+          right: "translateX(0px) translateY(-50%)",
+          top: "translateX(-50%) translateY(-100%)",
+          bottom: "translateX(-50%) translateY(0px)",
+        }[edge]!
+      : {
+          left: "translateX(-150%) translateY(-50%)",
+          right: "translateX(50%) translateY(-50%)",
+          top: "translateY(-150%) translateX(-50%)",
+          bottom: "translateY(50%) translateX(-50%)",
+        }[edge]!;
   }
 
-  return (
+  const renderButton = (
     <motion.button
+      initial={false}
       animate={{
-        left: attachedId && closestInfo ? closestInfo.point.x : x,
-        top: attachedId && closestInfo ? closestInfo.point.y : y,
+        left: `${attachedId && relativePos ? relativePos.x : x}px`,
+        top: `${attachedId && relativePos ? relativePos.y : y}px`,
         transform:
           attachedId && closestInfo
             ? getTransform(closestInfo.edge, true)
@@ -250,7 +277,7 @@ const Assistant = () => {
               ? getTransform(closestInfo.edge, false)
               : "translate(50%, 50%)",
       }}
-      transition={{ duration: 0.2, ease: "easeOut" }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
       className={twMerge(
         attachedId
           ? `pointer-events-auto cursor-pointer bg-purple-500 transition-[border-radius] duration-800 ${
@@ -265,7 +292,7 @@ const Assistant = () => {
           : "pointer-events-none rounded-full bg-neutral-800 transition-[border-radius] duration-800",
         "z-[9999] p-3 text-sm font-bold text-white",
       )}
-      style={{ position: "fixed" }}
+      style={{ position: attachedId ? "absolute" : "fixed" }}
       onClick={analyse}
       onMouseEnter={() => setIsHoveringAssistant(true)}
       onMouseLeave={() => {
@@ -282,6 +309,10 @@ const Assistant = () => {
       />
     </motion.button>
   );
+
+  return attachedId && containerEl
+    ? createPortal(renderButton, containerEl)
+    : renderButton;
 };
 
 export default Assistant;

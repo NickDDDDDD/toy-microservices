@@ -3,8 +3,8 @@ from fastapi.responses import JSONResponse
 import json
 from openai import AsyncOpenAI
 import os
-import traceback  # ✅ 新增，用于打印完整堆栈
-
+import traceback 
+import base64
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -40,7 +40,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 print("🧩 Snapshot received:", json.dumps(snapshot, indent=2)[:300])  # 可加 max length
 
                 prompt = build_prompt_from_snapshot(snapshot)
-                print("📜 Built prompt:\n", prompt[:500])  # 避免过长
+                print("📜 Built prompt:\n", prompt[:500])  
 
                 response = await call_openai_chat(prompt)
 
@@ -50,6 +50,22 @@ async def websocket_endpoint(websocket: WebSocket):
                     "type": "response",
                     "content": response,
                 }))
+
+            elif msg_type == "transcribe_audio":
+                base64_audio = message["content"]["audio_base64"]
+                mime_type = message["content"].get("mime_type", "audio/webm")
+
+                print("🔊 Received audio (base64, truncated):", base64_audio[:100])
+
+                transcript = await call_openai_whisper(base64_audio, mime_type)
+
+                await websocket.send_text(json.dumps({
+                    "type": "transcribe_audio_result",
+                    "content": {
+                        "transcript": transcript,
+                    },
+                }))
+
             else:
                 await websocket.send_text(json.dumps({
                     "type": "error",
@@ -88,6 +104,23 @@ async def call_openai_chat(prompt: str) -> str:
         import traceback
         traceback.print_exc()
         return "Failed to generate response."
+    
+async def call_openai_whisper(base64_audio: str, mime_type: str) -> str:
+    try:
+        print("🌀 Decoding audio...")
+        audio_bytes = base64.b64decode(base64_audio)
+
+        print("🎙️ Calling OpenAI Whisper API...")
+        response = await client.audio.transcriptions.create(
+            model="whisper-1",
+            file=( "recording." + mime_type.split("/")[-1], audio_bytes, mime_type ),
+            response_format="json"
+        )
+        return response.text.strip()
+    except Exception as e:
+        print("❌ Whisper API Error:", e)
+        traceback.print_exc()
+        return "Failed to transcribe audio."
 
 def build_prompt_from_snapshot(snapshot: dict) -> str:
     container_id = snapshot.get("id")

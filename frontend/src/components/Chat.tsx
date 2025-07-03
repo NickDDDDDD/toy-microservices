@@ -1,7 +1,7 @@
 // Chat.tsx
 import { useState } from "react";
 import { useChatWebSocket } from "../context/ChatWebSocketContext";
-import { AIContainer } from "./Container";
+import { Container } from "./Container";
 import { twMerge } from "tailwind-merge";
 const Chat = () => {
   const { sendMessage, lastMessage, isConnected } = useChatWebSocket();
@@ -19,8 +19,8 @@ const Chat = () => {
   };
 
   return (
-    <AIContainer id="chat">
-      <div className="relative m-auto flex aspect-[4/3] h-[50dvh] flex-col justify-center bg-neutral-800 p-4 text-neutral-200">
+    <Container id="chat">
+      <div className="relative m-auto flex aspect-[4/3] h-[50dvh] flex-col justify-center rounded-4xl bg-neutral-800 p-4 text-neutral-200">
         <header className="flex w-full items-center justify-between rounded-full bg-neutral-700 px-4 py-2">
           <h2>WebSocket Chat</h2>
           <div className="relative flex items-center">
@@ -48,7 +48,7 @@ const Chat = () => {
             onKeyDown={(e) => {
               if (e.key === "Enter") handleSend();
             }}
-            className="flex-1 rounded-full bg-neutral-700 p-2 focus:outline-none"
+            className="flex-1 rounded-full bg-neutral-700 p-2 transition-all duration-300 focus:outline-none"
           />
           <button
             className="cursor-pointer rounded-full bg-neutral-700 p-2"
@@ -58,7 +58,7 @@ const Chat = () => {
           </button>
         </div>
       </div>
-    </AIContainer>
+    </Container>
   );
 };
 

@@ -12,6 +12,8 @@ type ContainerContextType<T = unknown> = {
   getAllSnapshots: () => ContainerSnapshot[];
   attachedId: string | null;
   setAttachedId: (id: string | null) => void;
+  setIsHovered: (id: string, hovered: boolean) => void;
+  isHovered: (id: string) => boolean;
 };
 
 const ContainerContext = createContext<ContainerContextType | null>(null);
@@ -34,6 +36,17 @@ export const ContainerContextProvider = ({
 
   const getContainerIds = useCallback(
     () => containers.map((c) => c.id),
+    [containers],
+  );
+
+  const setIsHovered = useCallback((id: string, hovered: boolean) => {
+    setContainers((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, isHovered: hovered } : c)),
+    );
+  }, []);
+
+  const isHovered = useCallback(
+    (id: string) => containers.find((c) => c.id === id)?.isHovered ?? false,
     [containers],
   );
 
@@ -61,6 +74,8 @@ export const ContainerContextProvider = ({
         getAllSnapshots,
         attachedId,
         setAttachedId,
+        setIsHovered,
+        isHovered,
       }}
     >
       {children}

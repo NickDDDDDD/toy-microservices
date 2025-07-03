@@ -10,7 +10,7 @@ export type ContainerInfo<T = unknown> = {
   id: string;
   apiRef: RefObject<ContainerPublicAPI | null>;
   domRef: RefObject<HTMLElement | null>;
-
+  isHovered: boolean;
   data?: T;
 };
 
